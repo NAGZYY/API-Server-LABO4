@@ -28,12 +28,6 @@ export default class HttpContext {
     static get() { 
         return httpContext; 
     }
-    JSON(jsonObj, ETag = "", fromCache = false) {
-
-        if (!fromCache && this.path.isAPI && this.path.id === undefined) {
-            CachedRequestsManager.add(this.request.url, jsonObj, ETag);
-        }
-    }
     async getJSONPayload() {
         return await new Promise(resolve => {
             let body = [];
