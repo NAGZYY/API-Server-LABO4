@@ -60,6 +60,7 @@ export default class Repository {
         this.newETag();
         fs.writeFileSync(this.objectsFile, JSON.stringify(this.objectsList));
         if (this.cached) {
+          //RepositoryCachesManager.clear(this.objectsName);
           RepositoryCachesManager.add(this.objectsName, this.objectsList);
         }
       }

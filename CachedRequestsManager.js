@@ -59,7 +59,7 @@ export default class CachedRequestsManager {
         let index = 0;
         let now = utilities.nowInSeconds();
         for (let cache of repositoryCaches) {
-            if (cache.Expire_Time < now) {
+            if (cache.Expire_Time < now /*&& cache.model != undefined*/) {
                 console.log("Les données en cache du fichier " + cache.model + ".json ont expirées");
                 indexToDelete.push(index);
             }
@@ -71,13 +71,10 @@ export default class CachedRequestsManager {
     static get(HttpContext) {
         const url = HttpContext.req.url;
         const cachedResponse = CachedRequestsManager.find(url);
-        //log(FgRed, cachedResponse);
-        //log(FgYellow, repositoryCaches);
+        
         if (cachedResponse != null) {
             HttpContext.response.JSON(cachedResponse.payload, cachedResponse.ETag, true);
             return true;
-        } else {
-            CachedRequestsManager.add(url, HttpContext.payload, HttpContext.req.headers);
         }
         return false;
     }

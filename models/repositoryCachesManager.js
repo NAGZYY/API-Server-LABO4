@@ -53,7 +53,7 @@ export default class RepositoryCachesManager {
         let index = 0;
         let now = utilities.nowInSeconds();
         for (let cache of repositoryCaches) {
-            if (cache.Expire_Time < now) {
+            if (cache.Expire_Time < now /*&& cache.model != undefined*/) {
                 console.log("Cached file data of " + cache.model + ".json expired");
                 indexToDelete.push(index);
             }
