@@ -1,90 +1,87 @@
 import * as utilities from "./utilities.js";
-import { log } from "./log.js";
+import * as serverVariables from "./serverVariables.js";
+import {log} from "./log.js";
+let repositoryCachesExpirationTime = serverVariables.get("main.repository.CacheExpirationTime");
 
 // Repository file data models cache
-globalThis.cachedRequests = [];
+globalThis.repositoryCaches = [];
 
 export default class CachedRequestsManager {
-    static add(url, content, ETag = "") {
+    static add(url, payload, ETag = "") {
         if (url !== "") {
+            //log(FgGreen, "Add");
             CachedRequestsManager.clear(url);
-            globalThis.cachedRequests.push({
+            repositoryCaches.push({
                 url,
-                content,
+                payload,
                 ETag,
-                Expire_Time: utilities.nowInSeconds() + cachedRequestsExpirationTime,
+                Expire_Time: utilities.nowInSeconds() + repositoryCachesExpirationTime
             });
-            console.log("Request for " + url + " added to cache");
+            console.log("Ajout dans la cache avec l'url associé: " + url);
+            //log(FgGreen, repositoryCaches);
         }
     }
 
     static find(url) {
         try {
-            if (url !== "") {
-                for (let cacheKey in globalThis.cachedRequests) {
-                    const cache = globalThis.cachedRequests[cacheKey];
-                    if (cache.url === url) {
-                        // Renouveler la cache
-                        cache.Expire_Time =
-                            utilities.nowInSeconds() + cachedRequestsExpirationTime;
-                        console.log("Request for " + url + " retrieved from cache");
-                        return { content: cache.content, ETag: cache.ETag };
+            if (url != "") {
+                for (let cache of repositoryCaches) {
+
+                    if (cache.url == url) {
+
+                        // renew cache
+                        cache.Expire_Time = utilities.nowInSeconds() + repositoryCachesExpirationTime;
+                        console.log(`Extraction de la cache avec l'URL associé: ${url}`);
+                        return cache;
                     }
                 }
             }
         } catch (error) {
-            console.log("Cached request error!", error);
+            console.log("repository cache error!", error);
         }
         return null;
     }
 
     static clear(url) {
-        console.log("CLEAR");
-        let indexToDelete = [];
-        let index = 0;
-        for (let cachedRequest of globalThis.cachedRequests) {
-            if (cachedRequest.url.toLowerCase().includes(url.toLowerCase())) {
-                console.log("Suppression de la cache avec l’url associé: " + cachedRequest.url);
-                indexToDelete.push(index);
+        if (url != "") {
+            let indexToDelete = [];
+            let index = 0;
+            for (let cache of repositoryCaches) {
+                if (cache.url == url) indexToDelete.push(index);
+                index++;
             }
-            index++;
+            utilities.deleteByIndex(repositoryCaches, indexToDelete);
         }
-        utilities.deleteByIndex(globalThis.cachedRequests, indexToDelete);
     }
-
+    
     static flushExpired() {
-        console.log("EXPIRED"); 
         let indexToDelete = [];
         let index = 0;
         let now = utilities.nowInSeconds();
-        for (let cachedRequest of globalThis.cachedRequests) {
-            if (cachedRequest.Expire_Time < now) {
-                console.log("Retrait de cache expirée avec l’url associé: " + cachedRequest.url);
+        for (let cache of repositoryCaches) {
+            if (cache.Expire_Time < now) {
+                console.log("Les données en cache du fichier " + cache.model + ".json ont expirées");
                 indexToDelete.push(index);
             }
             index++;
         }
-        utilities.deleteByIndex(globalThis.cachedRequests, indexToDelete);
+        utilities.deleteByIndex(repositoryCaches, indexToDelete);
     }
 
     static get(HttpContext) {
-        console.log(HttpContext.req.url);
         const url = HttpContext.req.url;
         const cachedResponse = CachedRequestsManager.find(url);
-        console.log(cachedResponse);
-        if (cachedResponse) {
-            console.log(`Extraction de la cache avec l'URL associé: ${url}`);
-            HttpContext.response.JSON(cachedResponse.content, cachedResponse.ETag, true);
+        //log(FgRed, cachedResponse);
+        //log(FgYellow, repositoryCaches);
+        if (cachedResponse != null) {
+            HttpContext.response.JSON(cachedResponse.payload, cachedResponse.ETag, true);
             return true;
         } else {
-            console.log(`Cache non trouvée pour l'URL: ${url}`);
+            CachedRequestsManager.add(url, HttpContext.payload, HttpContext.req.headers);
         }
-
         return false;
     }
 }
 
-//setInterval(CachedRequestsManager.flushExpired, cachedRequestsExpirationTime * 1000);
-//log(BgWhite, FgBlack, "Periodic cached requests cleaning process started...");
-
-////const cachedRequestsExpirationTime = 3600; // seconds
+setInterval(CachedRequestsManager.flushExpired, repositoryCachesExpirationTime * 1000);
+log(BgWhite, FgBlack, "Periodic repository caches cleaning process started...");
