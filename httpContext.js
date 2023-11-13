@@ -8,8 +8,9 @@
 // Lionel-Groulx College
 /////////////////////////////////////////////////////////////////////
 import queryString from "query-string";
-import Response from "./response.js";
+import Response from "./response.js";   
 import * as utilities from "./utilities.js";
+import CachedRequestsManager from "./CachedRequestsManager.js";
 
 let httpContext = null;
 
@@ -18,7 +19,7 @@ export default class HttpContext {
         this.req = req;
         this.res = res;
         this.path = utilities.decomposePath(req.url);
-        this.response = new Response(res);
+        this.response = new Response(this);
         this.payload = null;
         this.secure = req.headers['x-forwarded-proto'] != undefined;
         this.host = (this.secure ? "https://" : "http://") + req.headers["host"];
@@ -26,6 +27,12 @@ export default class HttpContext {
     }
     static get() { 
         return httpContext; 
+    }
+    JSON(jsonObj, ETag = "", fromCache = false) {
+
+        if (!fromCache && this.path.isAPI && this.path.id === undefined) {
+            CachedRequestsManager.add(this.request.url, jsonObj, ETag);
+        }
     }
     async getJSONPayload() {
         return await new Promise(resolve => {
@@ -66,3 +73,6 @@ export default class HttpContext {
         return httpContext;
     }
 }
+
+
+
